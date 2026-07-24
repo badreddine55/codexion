@@ -3,7 +3,7 @@
 int fr_build_coder(t_sim *simulation)
 {
     int i;
-
+    
     simulation->coders = malloc(sizeof(t_coder) * simulation->n_coders);
     if (simulation->coders == NULL)
     {
@@ -18,8 +18,8 @@ int fr_build_coder(t_sim *simulation)
         simulation->coders[i].compiles_done = 0;
         simulation->coders[i].last_compile_start = fr_get_time_ms();
 
-        simulation->coders[i].left = &simulation->dongles[i];
-        simulation->coders[i].right = &simulation->dongles[(i + 1) % simulation->n_coders];
+        simulation->coders[i].right = &simulation->dongles[i];
+        simulation->coders[i].left = &simulation->dongles[(i + 1) % simulation->n_coders];
 
         simulation->coders[i].sim = simulation;
 

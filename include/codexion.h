@@ -7,14 +7,25 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h>
 #include <sys/time.h>
+
+#define SIZE 4
+
+typedef struct s_queue
+{
+    int arr_q[SIZE];
+    int count;
+} t_queue;
+
 typedef struct s_dongle
 {
     int             available;
-    long  released_at;      // for cooldown tracking
+    long            released_at;
+    t_queue         queue;
     pthread_mutex_t lock;
     pthread_cond_t  cond;
-}   t_dongle;
+} t_dongle;
 
 typedef struct s_coder
 {
@@ -23,6 +34,7 @@ typedef struct s_coder
     long  last_compile_start;
     t_dongle        *left;
     t_dongle        *right;
+    pthread_t       coder_thread;
     struct s_sim    *sim;              // back-pointer to shared config/state
 }   t_coder;
 
@@ -37,9 +49,9 @@ typedef struct s_sim
     long            dongle_cooldown;
     char            *scheduler;      // "fifo" or "edf"
     long            start_time;
+    int              stopped;
     t_coder         *coders;
     t_dongle        *dongles;
-    pthread_t       *threads;
     pthread_t       monitor_thread;
 
     pthread_mutex_t log_lock;
@@ -54,4 +66,11 @@ int fr_build_dongle(t_sim *simulation);
 int fr_build_coder(t_sim *simulation);
 void ft_clean_evrithing(t_sim *simulation);
 void fr_log(t_coder *coder, char *state);
+int queue_pop_front(t_queue *q);
+int queue_push(t_queue *q, int id);
+int queue_front(t_queue *q);
+void push_id_to_dongles(t_coder *coder);
+int release_dongle(t_dongle *dongle);
+void request_left_dongle(t_coder *coder);
+void request_right_dongle(t_coder *coder);
 #endif
