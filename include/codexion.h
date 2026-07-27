@@ -31,9 +31,11 @@ typedef struct s_coder
 {
     int             id;                // 1..N
     int             compiles_done;
+    int             finished;
     long  last_compile_start;
     t_dongle        *left;
     t_dongle        *right;
+    pthread_mutex_t meal_lock; // this is for the last compile start time, to avoid race conditions
     pthread_t       coder_thread;
     struct s_sim    *sim;              // back-pointer to shared config/state
 }   t_coder;
@@ -71,6 +73,6 @@ int queue_push(t_queue *q, int id);
 int queue_front(t_queue *q);
 void push_id_to_dongles(t_coder *coder);
 int release_dongle(t_dongle *dongle);
-void request_left_dongle(t_coder *coder);
-void request_right_dongle(t_coder *coder);
+int request_left_dongle(t_coder *coder);
+int request_right_dongle(t_coder *coder);
 #endif

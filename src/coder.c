@@ -10,10 +10,11 @@ int fr_build_coder(t_sim *simulation)
         perror("malloc");
         return (1);
     }
-
+    
     i = 0;
     while (i < simulation->n_coders)
     {
+        pthread_mutex_init(&simulation->coders[i].meal_lock, NULL);
         simulation->coders[i].id = i + 1;
         simulation->coders[i].compiles_done = 0;
         simulation->coders[i].last_compile_start = fr_get_time_ms();

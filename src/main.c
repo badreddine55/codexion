@@ -41,8 +41,16 @@ void *coder_cycle(void *arg)
 	{
 		push_id_to_dongles(coder);
 		
-		request_right_dongle(coder);
-		request_left_dongle(coder);
+		if (coder->left < coder->right)
+		{
+			request_left_dongle(coder);
+			request_right_dongle(coder);
+		}
+		else
+		{
+			request_right_dongle(coder);
+			request_left_dongle(coder);
+		}
 
 		coder->last_compile_start = fr_get_time_ms();   // for burnout + EDF deadline
 		fr_log(coder, "is compiling");
