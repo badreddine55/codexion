@@ -92,7 +92,7 @@ void push_id_to_dongles(t_coder *coder)
     t_dongle *first;
     t_dongle *second;
 
-    if (coder->left < coder->right)
+    if (coder->id % 2 != 0)
     {
         first = coder->left;
         second = coder->right;
@@ -106,9 +106,9 @@ void push_id_to_dongles(t_coder *coder)
     pthread_mutex_lock(&first->lock);
     pthread_mutex_lock(&second->lock);
 
-    queue_push(&coder->left->queue, coder->id);
-    queue_push(&coder->right->queue, coder->id);
-    
+    queue_push(&first->queue, coder->id);
+    queue_push(&second->queue, coder->id);
+
     pthread_mutex_unlock(&second->lock);
     pthread_mutex_unlock(&first->lock);
 }
@@ -116,12 +116,27 @@ int request_left_dongle(t_coder *coder)
 {
     long target_time;
     long remaining;
+    long chunk;
+
     pthread_mutex_lock(&coder->left->lock);
 
     while (1)
     {
         while (queue_front(&coder->left->queue) != coder->id)
+        {
+            if (fr_check_stop(coder->sim))
+            {
+                pthread_mutex_unlock(&coder->left->lock);
+                return (-1);
+            }
             pthread_cond_wait(&coder->left->cond, &coder->left->lock);
+        }
+
+        if (fr_check_stop(coder->sim))
+        {
+            pthread_mutex_unlock(&coder->left->lock);
+            return (-1);
+        }
 
         target_time = coder->left->released_at + coder->sim->dongle_cooldown;
         remaining = target_time - fr_get_time_ms();
@@ -130,23 +145,47 @@ int request_left_dongle(t_coder *coder)
             break;
 
         pthread_mutex_unlock(&coder->left->lock);
-        usleep(remaining * 1000);
+
+        chunk = (remaining < 5) ? remaining : 5;
+        usleep(chunk * 1000);
+
         pthread_mutex_lock(&coder->left->lock);
+
+        if (fr_check_stop(coder->sim))
+        {
+            pthread_mutex_unlock(&coder->left->lock);
+            return (-1);
+        }
     }
 
     fr_log(coder, "has taken a dongle");
-    return(0);
+    return (0);
 }
 int request_right_dongle(t_coder *coder)
 {
     long target_time;
     long remaining;
+    long chunk;
+
     pthread_mutex_lock(&coder->right->lock);
 
     while (1)
     {
         while (queue_front(&coder->right->queue) != coder->id)
+        {
+            if (fr_check_stop(coder->sim))
+            {
+                pthread_mutex_unlock(&coder->right->lock);
+                return (-1);
+            }
             pthread_cond_wait(&coder->right->cond, &coder->right->lock);
+        }
+
+        if (fr_check_stop(coder->sim))
+        {
+            pthread_mutex_unlock(&coder->right->lock);
+            return (-1);
+        }
 
         target_time = coder->right->released_at + coder->sim->dongle_cooldown;
         remaining = target_time - fr_get_time_ms();
@@ -155,12 +194,21 @@ int request_right_dongle(t_coder *coder)
             break;
 
         pthread_mutex_unlock(&coder->right->lock);
-        usleep(remaining * 1000);
+
+        chunk = (remaining < 5) ? remaining : 5;
+        usleep(chunk * 1000);
+
         pthread_mutex_lock(&coder->right->lock);
+
+        if (fr_check_stop(coder->sim))
+        {
+            pthread_mutex_unlock(&coder->right->lock);
+            return (-1);
+        }
     }
 
     fr_log(coder, "has taken a dongle");
-    return(0);
+    return (0);
 }
 int release_dongle(t_dongle *dongle)
 {

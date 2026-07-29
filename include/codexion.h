@@ -56,6 +56,8 @@ typedef struct s_sim
     t_dongle        *dongles;
     pthread_t       monitor_thread;
 
+    int finished_coders;
+    pthread_mutex_t finished_lock;
     pthread_mutex_t log_lock;
     int             stop_flag;         // set on burnout or completion
     pthread_mutex_t stop_lock;
@@ -75,4 +77,6 @@ void push_id_to_dongles(t_coder *coder);
 int release_dongle(t_dongle *dongle);
 int request_left_dongle(t_coder *coder);
 int request_right_dongle(t_coder *coder);
+int fr_stoppable_sleep(t_sim *sim, long duration_ms);
+int fr_check_stop(t_sim *sim);
 #endif
