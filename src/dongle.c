@@ -74,6 +74,9 @@ void push_id_to_dongles(t_coder *coder)
 int fr_both_free(t_coder *coder)
 {
     long now;
+    long left_remaining;
+    long right_remaining;
+    long remaining;
 
     now = fr_get_time_ms();
 
@@ -83,9 +86,22 @@ int fr_both_free(t_coder *coder)
         return (0);
 
     if (now < coder->left->released_at + coder->sim->dongle_cooldown)
-        return (0);
+    {
+        left_remaining  = (coder->left->released_at  + coder->sim->dongle_cooldown) - now;
+    }
     if (now < coder->right->released_at + coder->sim->dongle_cooldown)
-        return (0);
+    {
+        right_remaining = (coder->right->released_at + coder->sim->dongle_cooldown) - now;
+        if (left_remaining > right_remaining)
+            remaining = left_remaining;
+        else
+            remaining = right_remaining;
+        if (remaining > 0)
+        {
+            usleep(remaining * 1000);
+        }
+        return (1);
+    }
 
     return (1);
 }

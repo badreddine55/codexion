@@ -48,11 +48,8 @@ int pars_args(int ac, char **av, t_sim	*simulation)
 	while (i < 8)
 	{
 		nbr = is_valid_number(av[i]);
-		if (i == 1 && nbr <= 1)
+		if (i == 1 && nbr <= 0)
 		{
-			if(nbr == 1)
-				printf("Error: number_of_coders must be at least 2.A single coder cannot acquire two dongles to compile.");
-			else
 			printf("Error: '%s' number of coders must be greater than 1.\n", av[i]);
 			ft_clean_evrithing(simulation);
 			return (1);
@@ -85,5 +82,7 @@ int pars_args(int ac, char **av, t_sim	*simulation)
 		ft_clean_evrithing(simulation);
 		return (1);
 	}
+	else
+		simulation->scheduler = av[8];
 	return 0;
 }

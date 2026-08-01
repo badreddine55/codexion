@@ -10,8 +10,6 @@ int fr_build_coder(t_sim *simulation)
         perror("malloc");
         return (1);
     }
-    pthread_mutex_init(&simulation->finished_lock, NULL);
-    pthread_mutex_init(&simulation->stop_lock,NULL);
     
     i = 0;
     while (i < simulation->n_coders)

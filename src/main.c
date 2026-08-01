@@ -75,22 +75,18 @@ int fr_check_stop(t_sim *sim)
 
 int fr_stoppable_sleep(t_sim *sim, long duration_ms)
 {
-    long elapsed;
-    long remaining;
-    long chunk;
+    long start_time;
+    long now;
 
-    elapsed = 0;
-    chunk = 5;
-    while (elapsed < duration_ms)
+    start_time = fr_get_time_ms();
+    while (1)
     {
         if (fr_check_stop(sim))
             return (-1);
-        remaining = duration_ms - elapsed;
-        if (remaining < chunk)
-            usleep(remaining * 1000);
-        else
-            usleep(chunk * 1000);
-        elapsed += chunk;
+        now = fr_get_time_ms();
+        if (now >= start_time + duration_ms)
+            return 0;
+        usleep(2000);
     }
     return (0);
 }
