@@ -9,8 +9,11 @@ void ft_clean_evrithing(t_sim *simulation)
     {
         while (i < simulation->n_coders)
         {
-            pthread_mutex_destroy(&simulation->dongles[i].lock);
-            pthread_cond_destroy(&simulation->dongles[i].cond);
+            pthread_mutex_destroy(&simulation->scheduler_lock);
+            pthread_mutex_destroy(&simulation->finished_lock);
+            pthread_mutex_destroy(&simulation->log_lock);
+            pthread_mutex_destroy(&simulation->stop_lock);
+            pthread_cond_destroy(&simulation->scheduler_cond);
             i++;
         }
     }

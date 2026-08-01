@@ -22,7 +22,7 @@ void *monitor_thread(void *arg)
             i = 0;
             while (i < sim->n_coders)
             {
-                pthread_cond_broadcast(&sim->dongles[i].cond);
+                pthread_cond_broadcast(&sim->scheduler_cond);
                 i++;
             }
             return (NULL);
@@ -52,7 +52,7 @@ void *monitor_thread(void *arg)
                 i = 0;
                 while (i < sim->n_coders)
                 {
-                    pthread_cond_broadcast(&sim->dongles[i].cond);
+                    pthread_cond_broadcast(&sim->scheduler_cond);
                     i++;
                 }
                 return (NULL);
@@ -104,31 +104,8 @@ void *coder_cycle(void *arg)
     {
         if (fr_check_stop(coder->sim))
             break;
-
-        push_id_to_dongles(coder);
-
-    if (coder->id % 2 != 0)   // Odd coder
-    {
-        if (request_left_dongle(coder) == -1)
+        if (request_dongle(coder) == -1)
             break;
-
-        if (request_right_dongle(coder) == -1)
-        {
-            release_dongle(coder->left);
-            break;
-        }
-    }
-    else                      // Even coder
-    {
-        if (request_right_dongle(coder) == -1)
-            break;
-
-        if (request_left_dongle(coder) == -1)
-        {
-            release_dongle(coder->right);
-            break;
-        }
-    }
 
         pthread_mutex_lock(&coder->meal_lock);
         coder->last_compile_start = fr_get_time_ms();
@@ -137,8 +114,7 @@ void *coder_cycle(void *arg)
         fr_log(coder, "is compiling");
         interrupted = (fr_stoppable_sleep(coder->sim, coder->sim->time_to_compile) == -1);
 
-        release_dongle(coder->left);
-        release_dongle(coder->right);
+        fr_release_dongles(coder);
 
         if (interrupted)
             break;
@@ -182,6 +158,10 @@ int    main(int ac, char **av)
     }
     memset(simulation, 0, sizeof(t_sim));
     pthread_mutex_init(&simulation->log_lock, NULL);
+    pthread_mutex_init(&simulation->stop_lock, NULL);
+    pthread_mutex_init(&simulation->finished_lock, NULL);
+    pthread_mutex_init(&simulation->scheduler_lock, NULL);
+    pthread_cond_init(&simulation->scheduler_cond,NULL);
     if (pars_args(ac, av, simulation))
         return (1);
     if(fr_build_dongle(simulation))
