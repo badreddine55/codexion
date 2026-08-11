@@ -5,6 +5,7 @@ void *monitor_thread(void *arg)
     t_sim *sim = (t_sim *)arg;
     int   i;
     int   finished_c;
+    int   coder_finished;
     long  last_compile_start;
     long  interval;
 
@@ -32,15 +33,15 @@ void *monitor_thread(void *arg)
         i = 0;
         while (i < sim->n_coders)
         {
-            if (sim->coders[i].finished == 1)
+            pthread_mutex_lock(&sim->coders[i].meal_lock);
+            coder_finished = sim->coders[i].finished;
+            last_compile_start = sim->coders[i].last_compile_start;
+            pthread_mutex_unlock(&sim->coders[i].meal_lock);
+            if (coder_finished == 1)
             {
                 i++;
                 continue;
             }
-            pthread_mutex_lock(&sim->coders[i].meal_lock);
-            last_compile_start = sim->coders[i].last_compile_start;
-            pthread_mutex_unlock(&sim->coders[i].meal_lock);
-
             interval = fr_get_time_ms() - last_compile_start;
             if (interval > sim->time_to_burnout)
             {

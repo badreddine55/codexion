@@ -32,10 +32,12 @@ void	*coder_cycle(void *arg)
 	t_coder	*coder;
 	int		j;
 	int		interrupted;
+	int		is_finished;
 
 	coder = (t_coder *)arg;
 	j = 0;
 	interrupted = 0;
+	is_finished = 0;
 	while (j < coder->sim->compiles_required)
 	{
 		if (fr_check_stop(coder->sim))
@@ -67,8 +69,9 @@ void	*coder_cycle(void *arg)
 	pthread_mutex_lock(&coder->meal_lock);
 	if (j >= coder->sim->compiles_required)
 		coder->finished = 1;
+	is_finished = coder->finished;
 	pthread_mutex_unlock(&coder->meal_lock);
-	if (coder->finished)
+	if (is_finished)
 	{
 		pthread_mutex_lock(&coder->sim->finished_lock);
 		coder->sim->finished_coders += 1;
