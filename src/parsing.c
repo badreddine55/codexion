@@ -1,5 +1,5 @@
+
 #include "codexion.h"
-#include <limits.h>
 
 static int	is_digits(char *s)
 {
@@ -30,10 +30,30 @@ int	is_valid_number(char *str)
 		return (-1);
 	return (atoi(str));
 }
-int pars_args(int ac, char **av, t_sim	*simulation)
+
+static void	set_simulation_arg(t_sim *simulation, int i, int nbr)
 {
-	int		i;
-	int		nbr;
+	if (i == 1)
+		simulation->n_coders = nbr;
+	else if (i == 2)
+		simulation->time_to_burnout = nbr;
+	else if (i == 3)
+		simulation->time_to_compile = nbr;
+	else if (i == 4)
+		simulation->time_to_debug = nbr;
+	else if (i == 5)
+		simulation->time_to_refactor = nbr;
+	else if (i == 6)
+		simulation->compiles_required = nbr;
+	else if (i == 7)
+		simulation->dongle_cooldown = nbr;
+}
+
+int	pars_args(int ac, char **av, t_sim *simulation)
+{
+	int	i;
+	int	nbr;
+
 	if (ac != 9)
 	{
 		printf("Usage:\n");
@@ -41,48 +61,30 @@ int pars_args(int ac, char **av, t_sim	*simulation)
 		printf("time_to_compile time_to_debug ");
 		printf("time_to_refactor number_of_compiles_required ");
 		printf("dongle_cooldown scheduler\n");
-		ft_clean_evrithing(simulation);
 		return (1);
 	}
 	i = 1;
 	while (i < 8)
 	{
 		nbr = is_valid_number(av[i]);
-		if (i == 1 && nbr <= 0)
+		if (i == 1 && nbr <= 1)
 		{
-			printf("Error: '%s' number of coders must be greater than 1.\n", av[i]);
-			ft_clean_evrithing(simulation);
+			printf("Error: number_of_coders must be greater than 1.\n");
 			return (1);
 		}
 		if (i != 1 && nbr < 0)
 		{
 			printf("Error: '%s' must be a non-negative integer.\n", av[i]);
-			ft_clean_evrithing(simulation);
 			return (1);
 		}
-		if (i == 1)
-			simulation->n_coders = nbr;
-		else if (i == 2)
-			simulation->time_to_burnout = nbr;
-		else if (i == 3)
-			simulation->time_to_compile = nbr;
-		else if (i == 4)
-			simulation->time_to_debug = nbr;
-		else if (i == 5)
-			simulation->time_to_refactor = nbr;
-		else if (i == 6)
-			simulation->compiles_required = nbr;
-		else if (i == 7)
-			simulation->dongle_cooldown = nbr;
+		set_simulation_arg(simulation, i, nbr);
 		i++;
 	}
 	if (strcmp(av[8], "fifo") != 0 && strcmp(av[8], "edf") != 0)
 	{
 		printf("Error: scheduler must be 'fifo' or 'edf'.\n");
-		ft_clean_evrithing(simulation);
 		return (1);
 	}
-	else
-		simulation->scheduler = av[8];
-	return 0;
+	simulation->scheduler = av[8];
+	return (0);
 }

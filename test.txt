@@ -1,0 +1,114 @@
+Here's a 20-test suite built directly from this evaluation guide's tiers and logic — respecting the stated constraints (≤200 coders, ≥60ms timing values, compiles_required≥1).
+
+## Tier 1 — Easy (baseline sanity)
+
+| # | Command | Expected |
+|---|---------|----------|
+| 1 | `./codexion 1 800 200 200 200 10 0 fifo` | **Must burn out** at ~t=800. Single coder, single dongle, can never compile. |
+| 2 | `./codexion 5 2000 200 200 200 10 0 fifo` | No burnout. Cycle=600ms, huge margin. Runs until all 5 coders hit 10 compiles. |
+| 3 | `./codexion 5 2000 200 200 200 7 0 edf` | Same as #2, EDF mode, 7 required compiles instead of 10. No burnout. |
+| 4 | `./codexion 1 800 200 200 200 10 0 edf` | Same as #1 but EDF — confirms n=1 burns out identically regardless of scheduler. |
+| 5 | `./codexion 200 5000 200 200 200 3 0 fifo` | Stress the coder-count ceiling (exactly 200). No burnout expected — margin should still be generous per-pair even at scale. |
+
+## Tier 2 — Less Easy (burnout edge cases, log integrity, no duplication)
+
+| # | Command | Expected |
+|---|---------|----------|
+| 6 | `./codexion 5 500 200 200 200 10 0 fifo` | **Must burn out** around t=500 — cycle (600ms) exceeds burnout budget (500ms) by design. `"burned out"` must be the LAST line, within 10ms of deadline. |
+| 7 | `./codexion 5 500 200 200 200 10 0 edf` | Same infeasibility, EDF mode — confirms EDF can't rescue a structurally infeasible parameter set (matches your earlier n=4/800 finding). |
+| 8 | `./codexion 5 2000 200 200 200 10 0 fifo` (repeat of #2, run 3×) | Log-integrity check: every `"is compiling"` immediately preceded by exactly two `"has taken a dongle"` lines for the same coder id, never interleaved with another coder's lines. |
+| 9 | `./codexion 5 2000 200 200 200 10 0 fifo` | No-duplication check: trace every dongle's ownership window over time — confirm no two coders ever hold the same physical dongle simultaneously. |
+| 10 | `./codexion 3 600 200 200 200 5 0 fifo` | Borderline infeasible (cycle=600 == burnout=600, zero slack) — should reliably burn out right at the edge; good test of exact-boundary precision. |
+
+## Tier 3 — Medium (cooldown, scheduler comparison, log serialization)
+
+| # | Command | Expected |
+|---|---------|----------|
+| 11 | `./codexion 5 3000 200 200 200 10 400 fifo` | Cooldown check: no dongle re-taken within 400ms of its release. No burnout (3000ms margin), completes all 10 compiles per coder. |
+| 12 | `./codexion 5 3000 200 200 200 10 800 fifo` | Heavy cooldown (800ms) forces real queuing. No burnout — check grant order follows strict arrival order under FIFO. |
+| 13 | `./codexion 5 3000 200 200 200 10 800 edf` | **Same exact params as #12, EDF only.** Compare grant order directly against #12 — a coder closer to its burnout deadline should sometimes jump ahead of an earlier-arrived coder. This is the direct FIFO-vs-EDF differential test the guide calls for. |
+| 14 | `./codexion 4 3000 200 200 200 8 600 fifo` | Different ring size (4) with heavy cooldown — cross-check cooldown enforcement isn't n=5-specific. |
+| 15 | `./codexion 4 3000 200 200 200 8 600 edf` | Same as #14, EDF — another FIFO/EDF differential pair. |
+| 16 | `./codexion 6 4000 200 200 200 6 500 fifo` | 6-ring, moderate cooldown, log serialization stress (more concurrent pairs writing logs at once — confirm log_lock prevents interleaved/garbled lines under heavier concurrent output). |
+| 17 | `./codexion 6 4000 200 200 200 6 500 edf` | Same as #16, EDF — confirms serialization holds under both schedulers, not just FIFO. |
+
+## Additional edge/stress cases (constraint boundaries)
+
+| # | Command | Expected |
+|---|---------|----------|
+| 18 | `./codexion 5 2000 200 200 200 1 0 fifo` | `compiles_required=1` — minimum valid value per the doc's note (0 would mean "already compiled," 1 is the real floor). Should complete after just one compile per coder, no burnout. |
+| 19 | `./codexion 3 3000 60 60 60 10 60 fifo` | All timing values pinned to the stated 60ms floor — confirms nothing breaks (e.g., a polling interval that's coarser than 60ms could misbehave) at the smallest legal granularity. |
+| 20 | `./codexion 100 6000 100 100 100 5 100 edf` | Mid-large scale (100 coders) combined with EDF and real cooldown — a broader stress/regression check combining scale + scheduler + cooldown all at once, without hitting the 200-coder ceiling. |
+
+## How to actually run this set
+
+Since the guide explicitly says *"run each case several times... allow a small timing tolerance on borderline cases,"* I'd suggest:
+- Run tests **1, 4, 6, 7, 10** (all the intentional-burnout ones) **3-4 times each** — these are timing-boundary sensitive and most likely to reveal OS-scheduling-driven flakiness.
+- Run tests **12 vs 13** and **14 vs 15** back-to-back and diff the "has taken a dongle" order manually — that's the core FIFO/EDF differential proof the guide is asking for, and it's the most informative pair in this whole set.
+- Tests **5** and **20** are your scale checks — mainly watching for anything that degrades badly (excessive lock contention, log_lock becoming a bottleneck) as coder count grows, not for burnout/no-burnout correctness per se.
+
+Want me to also write out exactly what to check line-by-line for the FIFO-vs-EDF diff (test 12 vs 13), since that's the one requiring the most careful manual comparison?
+
+Tests 1–4 look right, but **test 5 is a real failure** — worth stopping on before moving to Less Easy.
+
+## Tests 1–4: correct
+
+- **Test 1** (`1 800 200 200 200 10 0 fifo`): burned out at 801, matches expected ~800, within tolerance.
+- **Test 2** (`5 2000 200 200 200 10 0 fifo`): no burnout, ran until natural completion at t≈6221, well past the point all coders would've hit 10 compiles. Correct.
+- **Test 3** (`5 2000 200 200 200 7 0 edf`): no burnout, completes cleanly at t≈4415. Correct.
+- **Test 4** (`1 800 200 200 200 10 0 edf`): burned out at 801, matches test 1 exactly regardless of scheduler. Correct.
+
+## Test 5 (`200 5000 200 200 200 3 0 fifo`): **should not have burned out, but did**
+
+Margin here is huge on paper — cycle = 600ms, burnout budget = 5000ms, over 8x slack. This should complete cleanly, same as test 2's logic just scaled up. Instead, **coder 92 burns out at t=5001**, never having compiled even once.
+
+Look at the actual timeline: by **t=4830**, the log is still only reaching coders in the **~85-91** range for their apparent *first* "has taken a dongle." That means after 4830ms, fewer than half the 200 coders have even started their first compile cycle. At that rate, coder 92 (and everyone after it) simply never gets served in time — not because the simulation is infeasible, but because **the acquisition process itself is propagating far too slowly through the ring.**
+
+## Why this is happening
+
+Every single dongle acquisition attempt across all 200 threads goes through one global `scheduler_lock`. Combined with your current polling design (`usleep(2000)` + re-lock + re-check on every iteration), you now have up to 200 threads all repeatedly contending for one mutex, most of them just to be told "not your turn yet." This creates massive **lock contention and OS scheduling overhead** that has nothing to do with the actual simulation logic — it's an artifact of the implementation not scaling, not a legitimate case of "the coders structurally couldn't make it in time."
+
+This is a genuine problem, not just a slow-but-correct run: the guide's own stated expectation is that a feasible case (huge margin, like this one) *must* complete without burnout. Test 5 directly contradicts that.
+
+## What this means for moving forward
+
+I'd hold off calling "Easy" fully passed until this is understood, since it reveals a real scalability limitation that the subject's evaluation guide would likely also probe (the guide explicitly allows up to 200 coders as a boundary you're expected to handle). A few directions, not mutually exclusive:
+
+1. **Reduce the polling overhead** — e.g., a slightly larger `usleep` interval reduces churn, but that's a band-aid, not a fix; it trades false-negative burnout risk for slightly less CPU thrash.
+2. **This is exactly where the heap conversion would help** — right now, even under FIFO, every waiting thread still has to fully re-lock and re-check `fr_both_free`/`fr_has_priority` from scratch on every poll cycle, regardless of whether anything relevant changed. A proper heap-backed structure combined with condition-variable signaling (rather than blind polling) would let threads sleep until specifically notified their situation changed, dramatically cutting the wasted contention at high `n`.
+3. **Re-test at intermediate scales** (e.g., n=20, n=50, n=100) to find where exactly this degradation starts becoming severe enough to cause false burnouts — that'll tell you if 200 is a hard requirement you need to actually fix for, or if it's more of an edge case worth noting as a known limitation.
+
+Want me to help design an intermediate-scale test set (20/50/100/150) to pin down exactly where this starts breaking down, before deciding whether this needs a structural fix now or can be documented as a known limitation in your README?
+
+All 5 Less Easy tests behave correctly. Let's verify each against its required check.
+
+## Test 6 — `5 500 200 200 200 10 0 fifo` (must burn out)
+Burned out at `501` vs expected ~500 — 1ms over, within tolerance. Critically: **"burned out" is the last line**, nothing printed after it. Correct.
+
+## Test 7 — same params, `edf` (must burn out)
+Burned out at `501`, same margin. Confirms EDF can't rescue a structurally infeasible cycle (600ms cycle > 500ms burnout budget), matching what we already established earlier.
+
+## Test 8 & 9 — `5 2000 200 200 200 10 0 fifo`, run twice (log-integrity check)
+This is the check for: *every "is compiling" immediately preceded by exactly two "has taken a dongle" lines for the same coder, never interleaved.*
+
+Scanned both full runs — every single `"X is compiling"` line is preceded by exactly two `"X has taken a dongle"` lines for that same coder id, with no other coder's line wedged in between, across the entire ~6000-10000ms duration of both runs. Some pairs share the identical timestamp, some are 1ms apart (matches the known cosmetic gap from earlier — harmless), but never interleaved with another coder. Correct.
+
+## Test 10 (implicitly, third `5 2000...` run) — no-duplication check
+Traced dongle ownership windows in this run — for every "has taken a dongle" → subsequent "is compiling" → "is debugging" transition, no coder ever appears to be actively compiling with a dongle that another coder's log shows as concurrently acquired. Confirmed via the pairing pattern: only non-adjacent id pairs ever compile simultaneously (e.g. `0 2`/`0 4` compiling together at the very start, never `0 2`/`0 3`), which is only possible if no dongle is double-assigned. Correct, no duplication detected.
+
+## Test 11 — `3 600 200 200 200 5 0 fifo` (borderline infeasible boundary)
+Cycle = 600ms exactly equals burnout budget = 600ms — zero slack by design. Burned out at `601`, 1ms over. Also confirms the triangle-topology constraint held right up to the failure (only 1 coder compiling at a time throughout, as expected for n=3).
+
+## Summary: Less Easy — all pass
+
+| Check | Result |
+|---|---|
+| Infeasible burnout fires correctly | ✅ (tests 6, 7, 11) |
+| Burnout log is last line, within 10ms | ✅ |
+| EDF doesn't rescue infeasible cases | ✅ |
+| Two "has taken a dongle" always precede "is compiling", never interleaved | ✅ (tests 8, 9) |
+| No dongle double-ownership | ✅ |
+
+This tier is clean. But it's worth remembering **the n=200 failure from Easy test 5 is still open** — that's a legitimate bug (false burnout under heavy lock contention, not a genuinely infeasible case), and it sits *underneath* everything tested here since Less Easy never stressed coder count. I'd treat that as still blocking before calling the full suite done, even though these 5 tests themselves are solid.
+
+Want to move to Medium (cooldown/EDF-vs-FIFO comparison) next, or go back and pin down the n=200 scaling issue first?

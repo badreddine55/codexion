@@ -1,191 +1,93 @@
 #include "codexion.h"
-void *monitor_thread(void *arg)
+
+int	main(int ac, char **av)
 {
-    t_sim *sim = (t_sim *)arg;
-    int   i;
-    int   finished_c;
-    long  last_compile_start;
-    long  interval;
+	t_sim	*simulation;
+	int		i;
+	int		created_coders;
+	int		monitor_created;
+	int		ret;
 
-    while (1)
-    {
-        pthread_mutex_lock(&sim->finished_lock);
-        finished_c = sim->finished_coders;
-        pthread_mutex_unlock(&sim->finished_lock);
-
-        if (finished_c >= sim->n_coders)
-        {
-            pthread_mutex_lock(&sim->stop_lock);
-            sim->stop_flag = 1;
-            pthread_mutex_unlock(&sim->stop_lock);
-
-            i = 0;
-            while (i < sim->n_coders)
-            {
-                pthread_cond_broadcast(&sim->scheduler_cond);
-                i++;
-            }
-            return (NULL);
-        }
-
-        i = 0;
-        while (i < sim->n_coders)
-        {
-            if (sim->coders[i].finished == 1)
-            {
-                i++;
-                continue;
-            }
-            pthread_mutex_lock(&sim->coders[i].meal_lock);
-            last_compile_start = sim->coders[i].last_compile_start;
-            pthread_mutex_unlock(&sim->coders[i].meal_lock);
-
-            interval = fr_get_time_ms() - last_compile_start;
-            if (interval > sim->time_to_burnout)
-            {
-                fr_log(&sim->coders[i], "burned out");
-
-                pthread_mutex_lock(&sim->stop_lock);
-                sim->stop_flag = 1;
-                pthread_mutex_unlock(&sim->stop_lock);
-
-                i = 0;
-                while (i < sim->n_coders)
-                {
-                    pthread_cond_broadcast(&sim->scheduler_cond);
-                    i++;
-                }
-                return (NULL);
-            }
-            i++;
-        }
-        usleep(1000);
-    }
-    return (NULL);
-}
-int fr_check_stop(t_sim *sim)
-{
-    int flag;
-
-    pthread_mutex_lock(&sim->stop_lock);
-    flag = sim->stop_flag;
-    pthread_mutex_unlock(&sim->stop_lock);
-    return (flag);
-}
-
-int fr_stoppable_sleep(t_sim *sim, long duration_ms)
-{
-    long start_time;
-    long now;
-
-    start_time = fr_get_time_ms();
-    while (1)
-    {
-        if (fr_check_stop(sim))
-            return (-1);
-        now = fr_get_time_ms();
-        if (now >= start_time + duration_ms)
-            return 0;
-        usleep(2000);
-    }
-    return (0);
-}
-void *coder_cycle(void *arg)
-{
-    t_coder *coder = (t_coder *)arg;
-    int j = 0;
-    int interrupted;
-
-    while (j < coder->sim->compiles_required)
-    {
-        if (fr_check_stop(coder->sim))
-            break;
-        if (request_dongle(coder) == -1)
-            break;
-
-        pthread_mutex_lock(&coder->meal_lock);
-        coder->last_compile_start = fr_get_time_ms();
-        pthread_mutex_unlock(&coder->meal_lock);
-
-        fr_log(coder, "is compiling");
-        interrupted = (fr_stoppable_sleep(coder->sim, coder->sim->time_to_compile) == -1);
-
-        fr_release_dongles(coder);
-
-        if (interrupted)
-            break;
-
-        coder->compiles_done++;
-
-        fr_log(coder, "is debugging");
-        if (fr_stoppable_sleep(coder->sim, coder->sim->time_to_debug) == -1)
-            break;
-
-        fr_log(coder, "is refactoring");
-        if (fr_stoppable_sleep(coder->sim, coder->sim->time_to_refactor) == -1)
-            break;
-
-        j++;
-    }
-
-    pthread_mutex_lock(&coder->meal_lock);
-    if (j >= coder->sim->compiles_required)
-        coder->finished = 1;
-    pthread_mutex_unlock(&coder->meal_lock);
-
-    if (coder->finished)
-    {
-        pthread_mutex_lock(&coder->sim->finished_lock);
-        coder->sim->finished_coders += 1;
-        pthread_mutex_unlock(&coder->sim->finished_lock);
-    }
-
-    return (NULL);
-}
-
-int    main(int ac, char **av)
-{
-    t_sim    *simulation;
-    simulation = malloc(sizeof(t_sim));
-    if (simulation == NULL)
-    {
-        perror("malloc");
-        return (1);
-    }
-    memset(simulation, 0, sizeof(t_sim));
-    pthread_mutex_init(&simulation->log_lock, NULL);
-    pthread_mutex_init(&simulation->stop_lock, NULL);
-    pthread_mutex_init(&simulation->finished_lock, NULL);
-    pthread_mutex_init(&simulation->scheduler_lock, NULL);
-    pthread_cond_init(&simulation->scheduler_cond,NULL);
-    if (pars_args(ac, av, simulation))
-        return (1);
-    if(fr_build_dongle(simulation))
-    {
-        ft_clean_evrithing(simulation);
-        return (1);
-    }
-    if(fr_build_coder(simulation))
-    {
-        ft_clean_evrithing(simulation);
-        return (1);
-    }
-    simulation->start_time = fr_get_time_ms();
-    int i = 0;
-    while (i < simulation->n_coders )
-    {
-        pthread_create(&simulation->coders[i].coder_thread, NULL, coder_cycle, &simulation->coders[i]);
-        i++;
-    }
-    pthread_create(&simulation->monitor_thread, NULL, monitor_thread, simulation);
-    i = 0;
-    while (i < simulation->n_coders )
-    {
-        pthread_join(simulation->coders[i].coder_thread, NULL);
-        i++;
-    }
-    pthread_join(simulation->monitor_thread, NULL);
-
-    ft_clean_evrithing(simulation);
-    return (0);
+	simulation = malloc(sizeof(t_sim));
+	if (simulation == NULL)
+	{
+		perror("malloc");
+		return (1);
+	}
+	memset(simulation, 0, sizeof(t_sim));
+	pthread_mutex_init(&simulation->log_lock, NULL);
+	pthread_mutex_init(&simulation->stop_lock, NULL);
+	pthread_mutex_init(&simulation->finished_lock, NULL);
+	pthread_mutex_init(&simulation->scheduler_lock, NULL);
+	pthread_cond_init(&simulation->scheduler_cond, NULL);
+	if (pars_args(ac, av, simulation))
+	{
+		ft_clean_evrithing(simulation);
+		return (1);
+	}
+	if (fr_build_dongle(simulation))
+	{
+		ft_clean_evrithing(simulation);
+		return (1);
+	}
+	if (fr_build_coder(simulation))
+	{
+		ft_clean_evrithing(simulation);
+		return (1);
+	}
+	simulation->start_time = fr_get_time_ms();
+	i = 0;
+	created_coders = 0;
+	while (i < simulation->n_coders)
+	{
+		ret = pthread_create(&simulation->coders[i].coder_thread,
+				NULL, coder_cycle, &simulation->coders[i]);
+		if (ret != 0)
+		{
+			pthread_mutex_lock(&simulation->stop_lock);
+			simulation->stop_flag = 1;
+			pthread_mutex_unlock(&simulation->stop_lock);
+			break ;
+		}
+		created_coders++;
+		i++;
+	}
+	if (created_coders != simulation->n_coders)
+	{
+		i = 0;
+		while (i < created_coders)
+		{
+			pthread_join(simulation->coders[i].coder_thread, NULL);
+			i++;
+		}
+		ft_clean_evrithing(simulation);
+		return (1);
+	}
+	ret = pthread_create(&simulation->monitor_thread,
+			NULL, monitor_thread, simulation);
+	if (ret != 0)
+	{
+		pthread_mutex_lock(&simulation->stop_lock);
+		simulation->stop_flag = 1;
+		pthread_mutex_unlock(&simulation->stop_lock);
+		i = 0;
+		while (i < simulation->n_coders)
+		{
+			pthread_join(simulation->coders[i].coder_thread, NULL);
+			i++;
+		}
+		ft_clean_evrithing(simulation);
+		return (1);
+	}
+	monitor_created = 1;
+	i = 0;
+	while (i < simulation->n_coders)
+	{
+		pthread_join(simulation->coders[i].coder_thread, NULL);
+		i++;
+	}
+	if (monitor_created)
+		pthread_join(simulation->monitor_thread, NULL);
+	ft_clean_evrithing(simulation);
+	return (0);
 }

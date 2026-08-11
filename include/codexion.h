@@ -6,6 +6,7 @@
 # include <string.h>
 # include <pthread.h>
 # include <unistd.h>
+#include <limits.h>
 # include <sys/time.h>
 
 # define SIZE 4
@@ -31,7 +32,6 @@ typedef struct s_queue
 */
 typedef struct s_dongle
 {
-	int				available;
 	long			released_at;
 	t_coder			*owner;
 	t_queue			queue;
@@ -47,6 +47,7 @@ typedef struct s_coder
 	int				compiles_done;
 	int				finished;
 	long			last_compile_start;
+	int 			has_compiled;
 	t_dongle		*left;
 	t_dongle		*right;
 	pthread_mutex_t	meal_lock;
@@ -99,7 +100,9 @@ int		fr_stoppable_sleep(t_sim *sim, long duration_ms);
 int		fr_build_dongle(t_sim *simulation);
 int		fr_build_coder(t_sim *simulation);
 void	ft_clean_evrithing(t_sim *simulation);
-
+void 	*coder_cycle(void *arg);
+void 	*monitor_thread(void *arg);
+int 	queue_remove_id(t_queue *q, int id);
 /*
 ** Logger
 */
@@ -127,5 +130,50 @@ int		fr_earliest_in_queue(t_sim *sim, t_queue *q, int me);
 ** Stop
 */
 int		fr_check_stop(t_sim *sim);
+
+// /* main.c *////////////////
+// int		main(int ac, char **av);
+ 
+// // /* init.c */
+// // void	fr_init_locks(t_sim *simulation);
+// // void	fr_launch_threads(t_sim *simulation);
+// // void	fr_join_threads(t_sim *simulation);
+ 
+// /* parsing.c */
+// int		pars_args(int ac, char **av, t_sim *simulation);
+// int		is_valid_number(char *str);
+ 
+// /* coder.c */
+// int		fr_build_coder(t_sim *simulation);
+// void	*coder_cycle(void *arg);
+ 
+// /* dongle.c */
+// int		fr_build_dongle(t_sim *simulation);
+// void	push_id_to_dongles(t_coder *coder);
+// int		fr_both_free(t_coder *coder);
+// int		fr_has_priority(t_coder *coder);
+// int		request_dongle(t_coder *coder);
+// void	fr_release_dongles(t_coder *coder);
+ 
+// /* heap.c (queue / EDF deadline helpers) */
+// int		queue_push(t_queue *q, int id);
+// int		queue_remove_id(t_queue *q, int id);
+// int		queue_front(t_queue *q);
+// long	fr_deadline(t_sim *sim, int id);
+// int		fr_earliest_in_queue(t_sim *sim, t_queue *q, int me);
+ 
+// /* monitor.c */
+// void	*monitor_thread(void *arg);
+// int		fr_check_stop(t_sim *sim);
+// int		fr_stoppable_sleep(t_sim *sim, long duration_ms);
+ 
+// /* cleanup.c */
+// void	ft_clean_evrithing(t_sim *simulation);
+ 
+// /* logger.c */
+// void	fr_log(t_coder *coder, char *state);
+ 
+// /* time_utils.c */
+// long	fr_get_time_ms(void);
 
 #endif
