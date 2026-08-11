@@ -21,6 +21,8 @@ void	ft_clean_evrithing(t_sim *simulation)
 		i = 0;
 		while (i < simulation->n_coders)
 		{
+			free(simulation->dongles[i].queue.arr_q);
+			simulation->dongles[i].queue.arr_q = NULL;
 			pthread_mutex_destroy(&simulation->dongles[i].lock);
 			i++;
 		}

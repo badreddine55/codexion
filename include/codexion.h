@@ -8,8 +8,7 @@
 # include <unistd.h>
 #include <limits.h>
 # include <sys/time.h>
-
-# define SIZE 4
+# include <time.h>
 
 /*
 ** Forward declarations
@@ -23,8 +22,9 @@ typedef struct s_sim	t_sim;
 */
 typedef struct s_queue
 {
-	int	arr_q[SIZE];
+	int	*arr_q;
 	int	count;
+	int	capacity;
 }	t_queue;
 
 /*
@@ -114,7 +114,7 @@ void	fr_log(t_coder *coder, char *state);
 int		queue_push(t_queue *q, int id);
 int		queue_pop_front(t_queue *q);
 int		queue_front(t_queue *q);
-void	push_id_to_dongles(t_coder *coder);
+int		push_id_to_dongles(t_coder *coder);
 
 /*
 ** Scheduler

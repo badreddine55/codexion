@@ -1,7 +1,9 @@
 #include "codexion.h"
 int queue_push(t_queue *q, int id)
 {
-    if (q->count < SIZE)
+    if (q == NULL || q->arr_q == NULL)
+        return (-1);
+    if (q->count < q->capacity)
     {
         q->arr_q[q->count] = id;
         q->count += 1;
@@ -15,6 +17,8 @@ int queue_remove_id(t_queue *q, int id)
     int i;
     int j;
 
+    if (q == NULL || q->arr_q == NULL)
+        return (-1);
     i = 0;
     while (i < q->count)
     {
@@ -38,7 +42,7 @@ int queue_pop_front(t_queue *q)
     int i;
     int id;
 
-    if (q->count == 0)
+    if (q == NULL || q->arr_q == NULL || q->count == 0)
         return (-1);
     id = q->arr_q[0];
     i = 0;
@@ -52,7 +56,7 @@ int queue_pop_front(t_queue *q)
 }
 int queue_front(t_queue *q)
 {
-    if (q->count == 0)
+    if (q == NULL || q->arr_q == NULL || q->count == 0)
         return (-1);
     return (q->arr_q[0]);
 }
