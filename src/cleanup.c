@@ -27,11 +27,11 @@ void	ft_clean_evrithing(t_sim *simulation)
 			i++;
 		}
 	}
-	pthread_mutex_destroy(&simulation->scheduler_lock);
+	// pthread_mutex_destroy(&simulation->scheduler_lock);
 	pthread_mutex_destroy(&simulation->finished_lock);
 	pthread_mutex_destroy(&simulation->log_lock);
 	pthread_mutex_destroy(&simulation->stop_lock);
-	pthread_cond_destroy(&simulation->scheduler_cond);
+	// pthread_cond_destroy(&simulation->scheduler_cond);
 	if (simulation->dongles)
 	{
 		free(simulation->dongles);

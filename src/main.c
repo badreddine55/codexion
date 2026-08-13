@@ -18,8 +18,8 @@ int	main(int ac, char **av)
 	pthread_mutex_init(&simulation->log_lock, NULL);
 	pthread_mutex_init(&simulation->stop_lock, NULL);
 	pthread_mutex_init(&simulation->finished_lock, NULL);
-	pthread_mutex_init(&simulation->scheduler_lock, NULL);
-	pthread_cond_init(&simulation->scheduler_cond, NULL);
+	// pthread_mutex_init(&simulation->scheduler_lock, NULL);
+	// pthread_cond_init(&simulation->scheduler_cond, NULL);
 	if (pars_args(ac, av, simulation))
 	{
 		ft_clean_evrithing(simulation);
@@ -40,6 +40,32 @@ int	main(int ac, char **av)
 	created_coders = 0;
 	while (i < simulation->n_coders)
 	{
+        if (i % 2)
+        {
+            i++;
+            continue;
+        }
+		ret = pthread_create(&simulation->coders[i].coder_thread,
+				NULL, coder_cycle, &simulation->coders[i]);
+		if (ret != 0)
+		{
+			pthread_mutex_lock(&simulation->stop_lock);
+			simulation->stop_flag = 1;
+			pthread_mutex_unlock(&simulation->stop_lock);
+			break ;
+		}
+		created_coders++;
+		i++;
+	}
+    usleep(2000);
+    i = 0;
+    while (i < simulation->n_coders)
+	{
+        if (i % 2 == 0)
+        {
+            i++;
+            continue;
+        }
 		ret = pthread_create(&simulation->coders[i].coder_thread,
 				NULL, coder_cycle, &simulation->coders[i]);
 		if (ret != 0)

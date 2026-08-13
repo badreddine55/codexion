@@ -21,12 +21,12 @@ void *monitor_thread(void *arg)
             sim->stop_flag = 1;
             pthread_mutex_unlock(&sim->stop_lock);
 
-            i = 0;
-            while (i < sim->n_coders)
-            {
-                pthread_cond_broadcast(&sim->scheduler_cond);
-                i++;
-            }
+            // i = 0;
+            // while (i < sim->n_coders)
+            // {
+            //     // pthread_cond_broadcast(&sim->scheduler_cond);
+            //     i++;
+            // }
             return (NULL);
         }
 
@@ -51,12 +51,12 @@ void *monitor_thread(void *arg)
                 sim->stop_flag = 1;
                 pthread_mutex_unlock(&sim->stop_lock);
 
-                i = 0;
-                while (i < sim->n_coders)
-                {
-                    pthread_cond_broadcast(&sim->scheduler_cond);
-                    i++;
-                }
+                // i = 0;
+                // while (i < sim->n_coders)
+                // {
+                //     // pthread_cond_broadcast(&sim->scheduler_cond);
+                //     i++;
+                // }
                 return (NULL);
             }
             i++;

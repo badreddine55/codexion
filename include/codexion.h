@@ -73,8 +73,6 @@ typedef struct s_sim
 	t_coder			*coders;
 	t_dongle		*dongles;
 	pthread_t		monitor_thread;
-	pthread_mutex_t	scheduler_lock;
-	pthread_cond_t	scheduler_cond;
 	int				finished_coders;
 	pthread_mutex_t	finished_lock;
 	pthread_mutex_t	log_lock;
@@ -121,7 +119,7 @@ int		push_id_to_dongles(t_coder *coder);
 */
 int		request_dongle(t_coder *coder);
 void	fr_release_dongles(t_coder *coder);
-int		fr_both_free(t_coder *coder);
+int		fr_try_acquire(t_coder *coder);
 int		fr_has_priority(t_coder *coder);
 long	fr_deadline(t_sim *sim, int id);
 int		fr_earliest_in_queue(t_sim *sim, t_queue *q, int me);

@@ -1,7 +1,7 @@
 NAME = codexion
 
 CC = cc
-CFLAGS = -Wall -Wextra -Werror -g -Iinclude -pthread
+CFLAGS = -Wall -Wextra -Werror -g -Iinclude -g
 LDFLAGS = -pthread
 
 SRC = $(wildcard src/*.c)
@@ -10,7 +10,7 @@ OBJ = $(SRC:.c=.o)
 all: $(NAME)
 
 $(NAME): $(OBJ)
-	$(CC) $(OBJ) $(LDFLAGS) -o $(NAME)
+	$(CC) $(OBJ) -o $(NAME)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

@@ -67,7 +67,7 @@ int	pars_args(int ac, char **av, t_sim *simulation)
 	while (i < 8)
 	{
 		nbr = is_valid_number(av[i]);
-		if (i == 1 && nbr <= 1)
+		if (i == 1 && nbr < 1)
 		{
 			printf("Error: number_of_coders must be greater than 1.\n");
 			return (1);
